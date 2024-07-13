@@ -1,41 +1,41 @@
 #!/usr/bin/node
-/**
- * Wrapper function for request object that allows it
- * to work with async and await
- * @param   {String} url - site url
- * @returns {Promise}    - promise object that resolves
- *                         with parsed JSON response
- *                         and rejects with the request error.
- */
-function makeRequest (url) {
-  const request = require('request');
+
+/* eslint-disable */
+const request = require('request');
+
+function getCharacterEndPoints(filmID) {
+  const filmURL = `https://swapi-api.alx-tools.com/api/films/${filmID}`;
   return new Promise((resolve, reject) => {
-    request.get(url, (error, response, body) => {
-      if (error) reject(error);
-      else resolve(JSON.parse(body));
+    request(filmURL, (error, response, body) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(JSON.parse(body).characters);
+      }
     });
   });
 }
+const starWarID = process.argv[2]
+getCharacterEndPoints(starWarID)
+  .then((userEndPoints) => {
+    const requests = userEndPoints.map((element) => {
+      return new Promise((resolve, reject) => {
+        request(element, (error, response, body) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(JSON.parse(body).name);
+          }
+        });
+      });
+    });
 
-/**
- * Entry point - makes requests to Star Wars API
- * for movie info based movie ID passed as a CLI parameter.
- * Retrieves movie character info then prints their names
- * in order of appearance in the initial response.
- */
-async function main () {
-  const args = process.argv;
-
-  if (args.length < 3) return;
-
-  const movieUrl = 'https://swapi-api.alx-tools.com/api/films/' + args[2];
-  const movie = await makeRequest(movieUrl);
-
-  if (movie.characters === undefined) return;
-  for (const characterUrl of movie.characters) {
-    const character = await makeRequest(characterUrl);
-    console.log(character.name);
-  }
-}
-
-main();
+    Promise.all(requests)
+      .then((characterNames) => {
+        characterNames.forEach((name) => {
+          console.log(name);
+        });
+      })
+      .catch((error) => console.log(error));
+  })
+  .catch((error) => console.log(error));
