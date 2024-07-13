@@ -1,53 +1,41 @@
 #!/usr/bin/node
+/**
+ * Wrapper function for request object that allows it
+ * to work with async and await
+ * @param   {String} url - site url
+ * @returns {Promise}    - promise object that resolves
+ *                         with parsed JSON response
+ *                         and rejects with the request error.
+ */
+function makeRequest (url) {
+  const request = require('request');
+  return new Promise((resolve, reject) => {
+    request.get(url, (error, response, body) => {
+      if (error) reject(error);
+      else resolve(JSON.parse(body));
+    });
+  });
+}
 
-const request = require('request');
+/**
+ * Entry point - makes requests to Star Wars API
+ * for movie info based movie ID passed as a CLI parameter.
+ * Retrieves movie character info then prints their names
+ * in order of appearance in the initial response.
+ */
+async function main () {
+  const args = process.argv;
 
-const movieId = process.argv[2];
-const filmEndPoint = 'https://swapi-api.hbtn.io/api/films/' + movieId;
-let people = [];
-const names = [];
+  if (args.length < 3) return;
 
-const requestCharacters = async () => {
-  await new Promise(resolve => request(filmEndPoint, (err, res, body) => {
-    if (err || res.statusCode !== 200) {
-      console.error('Error: ', err, '| StatusCode: ', res.statusCode);
-    } else {
-      const jsonBody = JSON.parse(body);
-      people = jsonBody.characters;
-      resolve();
-    }
-  }));
-};
+  const movieUrl = 'https://swapi-api.alx-tools.com/api/films/' + args[2];
+  const movie = await makeRequest(movieUrl);
 
-const requestNames = async () => {
-  if (people.length > 0) {
-    for (const p of people) {
-      await new Promise(resolve => request(p, (err, res, body) => {
-        if (err || res.statusCode !== 200) {
-          console.error('Error: ', err, '| StatusCode: ', res.statusCode);
-        } else {
-          const jsonBody = JSON.parse(body);
-          names.push(jsonBody.name);
-          resolve();
-        }
-      }));
-    }
-  } else {
-    console.error('Error: Got no Characters for some reason');
+  if (movie.characters === undefined) return;
+  for (const characterUrl of movie.characters) {
+    const character = await makeRequest(characterUrl);
+    console.log(character.name);
   }
-};
+}
 
-const getCharNames = async () => {
-  await requestCharacters();
-  await requestNames();
-
-  for (const n of names) {
-    if (n === names[names.length - 1]) {
-      process.stdout.write(n);
-    } else {
-      process.stdout.write(n + '\n');
-    }
-  }
-};
-
-getCharNames();
+main();
