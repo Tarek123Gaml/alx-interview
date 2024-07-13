@@ -1,23 +1,40 @@
-#!/usr/bin/node
+#!/usr/bin/env node
 
 const request = require('request');
-const url = `https://swapi-api.hbtn.io/api/films/${process.argv[2]}/`;
-request(url, async function (error, response, body) {
+
+if (process.argv.length !== 3) {
+  console.log('Usage: ./0-starwars_characters.js <Movie ID>');
+  process.exit(1);
+}
+
+const movieId = process.argv[2];
+const url = `https://swapi.dev/api/films/${movieId}/`;
+
+request(url, (error, response, body) => {
   if (error) {
-    return console.log(error);
-  } else {
-    const characters = JSON.parse(body).characters;
-    for (const character in characters) {
-      const res = await new Promise((resolve, reject) => {
-        request(characters[character], (err, res, html) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(JSON.parse(html).name);
-          }
-        });
-      });
-      console.log(res);
-    }
+    console.error('Error:', error);
+    return;
   }
+
+  if (response.statusCode !== 200) {
+    console.error('Error: Unable to fetch movie data');
+    return;
+  }
+
+  const filmData = JSON.parse(body);
+  const characters = filmData.characters;
+
+  characters.forEach((characterUrl) => {
+    request(characterUrl, (error, response, body) => {
+      if (error) {
+        console.error('Error:', error);
+        return;
+      }
+
+      if (response.statusCode === 200) {
+        const characterData = JSON.parse(body);
+        console.log(characterData.name);
+      }
+    });
+  });
 });
